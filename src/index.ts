@@ -20,9 +20,29 @@ export default class GraphQLPlugin extends ApiPlugin {
   async execute({
     context,
     datasourceConfiguration,
-    actionConfiguration
+    actionConfiguration,
+    forwardedCookies
   }: PluginExecutionProps<GraphQLDatasourceConfiguration>): Promise<ExecutionOutput> {
     const query = actionConfiguration.body;
+    const url = new URL(actionConfiguration.path);
+    const host = url.hostname;
+    // replace everything up to the last dot in the hostname to get domain
+    const domain = host.replace(/^[^.]+\./g, '');
+    const cookies = Object.entries(forwardedCookies ?? {})
+      .filter(([k, v]) => v.domain === domain)
+      .map(([k, v]) => `${k}=${v.value}`);
+
+    if (cookies.length) {
+      // append to existing cookies if exists
+      const cookieObj = actionConfiguration.headers.find((o) => o.key === 'Cookie');
+      actionConfiguration.headers = [
+        ...actionConfiguration.headers.filter((o) => o.key !== 'Cookie'),
+        {
+          key: 'Cookie',
+          value: cookies.join('; ') + (cookieObj ? `;${cookieObj.value}` : '')
+        }
+      ];
+    }
 
     let requestConfig = this.generateRequestConfig(actionConfiguration);
     // Always use POST for GraphQL since GET has limits on URL length
