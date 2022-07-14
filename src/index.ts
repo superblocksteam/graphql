@@ -70,12 +70,11 @@ export default class GraphQLPlugin extends ApiPlugin {
       }
     };
 
-    const variables = actionConfiguration.custom?.variables?.value ?? '';
-    if (_.isEmpty(variables)) {
-      // Variables has to be an object in its deserialized form
-      // for the graphql router to accept the query
-      requestConfig.data.variables = {};
-    } else {
+    const variables = actionConfiguration.custom?.variables?.value;
+    // Checking for the nil case, as well as an empty string
+    // as variables is persisted as an empty string when the field
+    // is cleared out by a user in the UI
+    if (!(_.isNil(variables) || variables === '')) {
       requestConfig.data.variables = JSON.parse(variables);
     }
 
