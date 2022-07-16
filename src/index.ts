@@ -4,6 +4,7 @@ import {
   GraphQLActionConfiguration,
   GraphQLDatasourceConfiguration,
   HttpMethod,
+  IntegrationError,
   makeCurlString,
   RawRequest
 } from '@superblocksteam/shared';
@@ -22,10 +23,19 @@ export default class GraphQLPlugin extends ApiPlugin {
     datasourceConfiguration,
     actionConfiguration,
     forwardedCookies
-  }: PluginExecutionProps<GraphQLDatasourceConfiguration>): Promise<ExecutionOutput> {
+  }: PluginExecutionProps<GraphQLDatasourceConfiguration, GraphQLActionConfiguration>): Promise<ExecutionOutput> {
+    actionConfiguration = this.getMergedConfig(datasourceConfiguration, actionConfiguration);
+    let url: URL;
     const query = actionConfiguration.body;
-    const url = new URL(actionConfiguration.path);
+
+    try {
+      url = new URL(actionConfiguration.path);
+    } catch (err) {
+      throw new IntegrationError(`URL is not valid. Error: ${err}.`);
+    }
+
     const host = url.hostname;
+
     // replace everything up to the last dot in the hostname to get domain
     const domain = host.replace(/^[^.]+\./g, '');
     const cookies = Object.entries(forwardedCookies ?? {})
@@ -52,7 +62,8 @@ export default class GraphQLPlugin extends ApiPlugin {
     return await this.executeRequest(requestConfig);
   }
 
-  getRequest(actionConfiguration: GraphQLActionConfiguration): RawRequest {
+  getRequest(actionConfiguration: GraphQLActionConfiguration, datasourceConfiguration: GraphQLDatasourceConfiguration): RawRequest {
+    actionConfiguration = this.getMergedConfig(datasourceConfiguration, actionConfiguration);
     const bodyConfig = this.postRequestConfig(actionConfiguration.body, actionConfiguration).data;
     const body = isString(bodyConfig) ? bodyConfig : JSON.stringify(bodyConfig);
     return makeCurlString({
@@ -95,5 +106,14 @@ export default class GraphQLPlugin extends ApiPlugin {
 
   async test(datasourceConfiguration: GraphQLDatasourceConfiguration): Promise<void> {
     return;
+  }
+
+  getMergedConfig(
+    datasourceConfiguration: GraphQLDatasourceConfiguration,
+    actionConfiguration: GraphQLActionConfiguration
+  ): GraphQLActionConfiguration {
+    actionConfiguration.path = datasourceConfiguration.path ?? actionConfiguration.path;
+    actionConfiguration.headers = (datasourceConfiguration.headers ?? []).concat(actionConfiguration.headers ?? []);
+    return actionConfiguration;
   }
 }
