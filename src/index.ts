@@ -29,7 +29,7 @@ export default class GraphQLPlugin extends ApiPlugin {
     const query = actionConfiguration.body;
 
     try {
-      url = new URL(actionConfiguration.path);
+      url = new URL(actionConfiguration.path ?? '');
     } catch (err) {
       throw new IntegrationError(`URL is not valid. Error: ${err}.`);
     }
@@ -44,9 +44,9 @@ export default class GraphQLPlugin extends ApiPlugin {
 
     if (cookies.length) {
       // append to existing cookies if exists
-      const cookieObj = actionConfiguration.headers.find((o) => o.key === 'Cookie');
+      const cookieObj = actionConfiguration.headers?.find((o) => o.key === 'Cookie');
       actionConfiguration.headers = [
-        ...actionConfiguration.headers.filter((o) => o.key !== 'Cookie'),
+        ...(actionConfiguration.headers?.filter((o) => o.key !== 'Cookie') ?? []),
         {
           key: 'Cookie',
           value: cookies.join('; ') + (cookieObj ? `;${cookieObj.value}` : '')
@@ -57,14 +57,14 @@ export default class GraphQLPlugin extends ApiPlugin {
     let requestConfig = this.generateRequestConfig(actionConfiguration);
     // Always use POST for GraphQL since GET has limits on URL length
     requestConfig.method = HttpMethod.POST;
-    requestConfig = { ...requestConfig, ...this.postRequestConfig(query, actionConfiguration) };
+    requestConfig = { ...requestConfig, ...this.postRequestConfig(query ?? '', actionConfiguration) };
 
     return await this.executeRequest(requestConfig);
   }
 
   getRequest(actionConfiguration: GraphQLActionConfiguration, datasourceConfiguration: GraphQLDatasourceConfiguration): RawRequest {
     actionConfiguration = this.getMergedConfig(datasourceConfiguration, actionConfiguration);
-    const bodyConfig = this.postRequestConfig(actionConfiguration.body, actionConfiguration).data;
+    const bodyConfig = this.postRequestConfig(actionConfiguration.body ?? '', actionConfiguration).data;
     const body = isString(bodyConfig) ? bodyConfig : JSON.stringify(bodyConfig);
     return makeCurlString({
       reqMethod: HttpMethod.POST,
