@@ -1,6 +1,6 @@
 {
   "name": "@superblocksteam/graphql",
-  "version": "0.2319.0",
+  "version": "0.2332.0",
   "description": "Superblocks GraphQL Plugin",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
